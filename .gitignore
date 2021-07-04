@@ -476,8 +476,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-blacklist.txt
 
-log/*
-config/production.json
-export.cmd
+config/*
+a.txt
+translator.js
+viewreport.json
