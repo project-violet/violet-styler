@@ -1,0 +1,19 @@
+{
+  "name": "violet-styler",
+  "version": "1.0.0",
+  "description": "Ultra-Personalized Custom Service Implementation for `Violet-Server`",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://violet-dev:!guswns970613@github.com/project-violet/violet-styler.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/project-violet/violet-styler/issues"
+  },
+  "homepage": "https://github.com/project-violet/violet-styler#readme"
+}
