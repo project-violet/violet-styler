@@ -83,19 +83,45 @@ console.log('filtered-data-size: ' + data.length);
 // console.log(count);
 
 function _merge_msperpages_by_articleid() {
-  var map = {};
+  var merged = {};
+  var userCount = {};
   data.forEach(function(report) {
     const ms = JSON.parse(report.MsPerPages);
-    if (!(report.ArticleId in map))
-      map[report.ArticleId] = ms;
+    if (!(report.ArticleId in merged)) {
+      merged[report.ArticleId] = ms;
+      userCount[report.ArticleId] = 1;
+    }
     else {
-      for (var i = 0; i < ms.length; i++) map[report.ArticleId][i] += ms[i];
+      for (var i = 0; i < ms.length; i++) merged[report.ArticleId][i] += ms[i];
+      userCount[report.ArticleId] += 1;
     }
   });
-  Object.keys(map).forEach(function(key) {
-      console.log(key + ': ' + map[key]);
+  
+  // Object.keys(merged).forEach(function(key) {
+  //     console.log(key + ': ' + merged[key]);
+  // });
+
+
+  var kv = [];
+  Object.keys(userCount).forEach(function(key) {
+    kv.push([key, userCount[key]]);
   });
-  console.log(Object.keys(map).length);
+
+  kv.sort((x,y) => y[1] - x[1]);
+  
+  for (var i = 0; i < 20; i++) {
+    console.log(kv[i][0]);
+    // console.log(merged[kv[i][0]].toString());
+
+    var sum = merged[kv[i][0]].map((x) =>  x / kv[i][1]).reduce((a, cv) => a + cv);
+    var avg = sum / merged[kv[i][0]].length;
+    // var avg = kv[i][1];
+    var ud = merged[kv[i][0]].map((x) =>  x / kv[i][1]).map((x) => {
+      if (x >= avg)   return x / avg;
+      return x / avg;
+    });
+    console.log(ud.map((x) => ' ' + x.toFixed(1)).toString());
+  }
 }
 
 _merge_msperpages_by_articleid();
