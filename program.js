@@ -21,7 +21,7 @@ function download_report_data() {
 
   console.log(data.length);
 
-  fs.writeFile(dataPath, JSON.stringify(data, null, 4), function(err) {
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 4), function(err) {
     console.log(err);
   });
 }
@@ -39,6 +39,29 @@ function load_report_data() {
 }
 
 var data = load_report_data();
+
+function hide_userappid_for_dist() {
+  var userSet = {};
+  data.forEach(function(report) {
+    if (!(report.UserAppId in userSet)) {
+      userSet[report.UserAppId] = 1;
+    }
+  });
+
+  var idCount = 0;
+  Object.keys(userSet).forEach(function(key) {
+    userSet[key] = idCount++; 
+  });
+
+  data.forEach(function(report) {
+    report.UserAppId = userSet[report.UserAppId];
+  });
+
+  const dataPath = path.resolve(__dirname, 'viewreport-dist.json');
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 4), function(err) {
+    console.log(err);
+  });
+}
 
 /*
  "Id": 14307,
