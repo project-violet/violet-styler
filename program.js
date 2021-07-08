@@ -112,18 +112,30 @@ function _merge_msperpages_by_articleid() {
     const ms = JSON.parse(report.MsPerPages);
     if (!(report.ArticleId in merged)) {
       merged[report.ArticleId] = ms;
-      userCount[report.ArticleId] = 1;
     }
     else {
       for (var i = 0; i < ms.length; i++) merged[report.ArticleId][i] += ms[i];
+    }
+  });
+  return merged;
+}
+
+function _get_user_article_count() {
+  var userCount = {};
+  data.forEach(function(report) {
+    if (!(report.ArticleId in userCount)) {
+      userCount[report.ArticleId] = 1;
+    }
+    else {
       userCount[report.ArticleId] += 1;
     }
   });
-  
-  // Object.keys(merged).forEach(function(key) {
-  //     console.log(key + ': ' + merged[key]);
-  // });
+  return userCount;
+}
 
+function _calculate_burst_time() {
+  var merged = _merge_msperpages_by_articleid();
+  var userCount = _get_user_article_count();
 
   var kv = [];
   Object.keys(userCount).forEach(function(key) {
@@ -132,8 +144,9 @@ function _merge_msperpages_by_articleid() {
 
   kv.sort((x,y) => y[1] - x[1]);
   
-  for (var i = 0; i < 20; i++) {
-    console.log(kv[i][0]);
+  var bt = [];
+  for (var i = 0; i < kv.length; i++) {
+    // console.log(kv[i][0]);
     // console.log(merged[kv[i][0]].toString());
 
     var sum = merged[kv[i][0]].map((x) =>  x / kv[i][1]).reduce((a, cv) => a + cv);
@@ -143,8 +156,45 @@ function _merge_msperpages_by_articleid() {
       if (x >= avg)   return x / avg;
       return x / avg;
     });
-    console.log(ud.map((x) => ' ' + x.toFixed(1)).toString());
+
+    // function _show_burst_time_to_graph() {
+    //   var min = 99999;
+    //   var max = 0;
+
+    //   ud.forEach(function (x) {
+    //     if (x < min) min = x;
+    //     if (x > max) max = x;
+    //   });
+
+    //   for (var i = 0; i < ud.length; i++) {
+    //     const v = (ud[i] - min) * 10;
+    //     var pp = '';
+    //     for (var j = 0; j < v; j++) {
+    //       pp += '*';
+    //     }
+    //     console.log(pp);
+    //   }
+    // }
+
+    // console.log(kv[i][1]);
+    // console.log(ud.map((x) => ' ' + x.toFixed(1)).toString());
+    // _show_burst_time_to_graph();
+
+    const bt_cnt_threshold = 15;
+
+    if (kv[i][1] < bt_cnt_threshold) continue;
+
+    bt.push( {
+      id: kv[i][0],
+      bt: ud,
+      ct: kv[i][1],
+    });
   }
+
+  const dataPath = path.resolve(__dirname, 'burst-time.json');
+  fs.writeFileSync(dataPath, JSON.stringify(bt, null, 4), function(err) {
+    console.log(err);
+  });
 }
 
-_merge_msperpages_by_articleid();
+_calculate_burst_time();
