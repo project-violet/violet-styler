@@ -52,3 +52,30 @@ Ultra-Personalized Custom Service Implementation for `Violet-Server`
 1947684
  2.3, 2.0, 1.2, 1.6, 1.8, 1.1, 1.5, 1.2, 0.9, 1.0, 1.4, 1.0, 0.7, 0.8, 0.7, 1.1, 0.6, 0.3, 0.5, 0.4, 0.3, 1.3, 0.8, 0.6, 0.0
 ```
+
+## Personal Read Pattern Analysis
+
+### Thumbnail Aggro Index (TAI)
+
+### Valid Read Time per Pages (VRTP)
+
+```
+VRTP = VRT / VRP
+VRT := Valid Read Time
+VRP := Valid Read Page
+```
+
+### MPP & V(MPP), V(MPP)'s Singularity
+
+```
+MPP = P x VT ( Page x Valid Time )
+V(MPP) = VT x COUNT(P)
+```
+
+### Reproduced Valid Read-Time per Pages (RVRTP)
+
+### User Confidence Level (UCL)
+
+### Likes and Dislikes Index (LDI)
+
+### Article Relevance Tree
