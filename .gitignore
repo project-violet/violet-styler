@@ -481,3 +481,8 @@ config/*
 a.txt
 translator.js
 viewreport.json
+connection.txt
+burst-time.json
+smoothly.json
+viewreport-dist.json
+a.zip

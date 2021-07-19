@@ -50,7 +50,7 @@ function hide_userappid_for_dist() {
 
   var idCount = 0;
   Object.keys(userSet).forEach(function(key) {
-    userSet[key] = idCount++; 
+    userSet[key] = idCount++;
   });
 
   data.forEach(function(report) {
@@ -112,8 +112,7 @@ function _merge_msperpages_by_articleid() {
     const ms = JSON.parse(report.MsPerPages);
     if (!(report.ArticleId in merged)) {
       merged[report.ArticleId] = ms;
-    }
-    else {
+    } else {
       for (var i = 0; i < ms.length; i++) merged[report.ArticleId][i] += ms[i];
     }
   });
@@ -125,8 +124,7 @@ function _get_user_article_count() {
   data.forEach(function(report) {
     if (!(report.ArticleId in userCount)) {
       userCount[report.ArticleId] = 1;
-    }
-    else {
+    } else {
       userCount[report.ArticleId] += 1;
     }
   });
@@ -142,18 +140,19 @@ function _calculate_burst_time() {
     kv.push([key, userCount[key]]);
   });
 
-  kv.sort((x,y) => y[1] - x[1]);
-  
+  kv.sort((x, y) => y[1] - x[1]);
+
   var bt = [];
   for (var i = 0; i < kv.length; i++) {
     // console.log(kv[i][0]);
     // console.log(merged[kv[i][0]].toString());
 
-    var sum = merged[kv[i][0]].map((x) =>  x / kv[i][1]).reduce((a, cv) => a + cv);
+    var sum =
+        merged[kv[i][0]].map((x) => x / kv[i][1]).reduce((a, cv) => a + cv);
     var avg = sum / merged[kv[i][0]].length;
     // var avg = kv[i][1];
-    var ud = merged[kv[i][0]].map((x) =>  x / kv[i][1]).map((x) => {
-      if (x >= avg)   return x / avg;
+    var ud = merged[kv[i][0]].map((x) => x / kv[i][1]).map((x) => {
+      if (x >= avg) return x / avg;
       return x / avg;
     });
 
@@ -184,7 +183,7 @@ function _calculate_burst_time() {
 
     if (kv[i][1] < bt_cnt_threshold) continue;
 
-    bt.push( {
+    bt.push({
       id: kv[i][0],
       bt: ud,
       ct: kv[i][1],
@@ -197,4 +196,111 @@ function _calculate_burst_time() {
   });
 }
 
-_calculate_burst_time();
+function _show_burst_time_to_graph(id) {
+  var merged = _merge_msperpages_by_articleid();
+  var userCount = _get_user_article_count();
+
+  var min = 99999;
+  var max = 0;
+
+  var sum = merged[id].map((x) => x / userCount[id]).reduce((a, cv) => a + cv);
+  var avg = sum / merged[id].length;
+  var ud = merged[id].map((x) => x / userCount[id]).map((x) => {
+    if (x >= avg) return x / avg;
+    return x / avg;
+  });
+
+  ud.forEach(function(x) {
+    if (x < min) min = x;
+    if (x > max) max = x;
+  });
+
+  for (var i = 0; i < ud.length; i++) {
+    const v = (ud[i] - min) * 10;
+    var pp = '';
+    for (var j = 0; j < v; j++) {
+      pp += '*';
+    }
+    console.log(pp);
+  }
+}
+
+// _calculate_burst_time();
+
+function _calculate_smoothly() {
+  var merged = _merge_msperpages_by_articleid();
+  var userCount = _get_user_article_count();
+
+  var kv = [];
+  Object.keys(userCount).forEach(function(key) {
+    kv.push([key, userCount[key]]);
+  });
+
+  kv.sort((x, y) => y[1] - x[1]);
+
+  var bt = [];
+  for (var i = 0; i < kv.length; i++) {
+    var sum =
+        merged[kv[i][0]].map((x) => x / kv[i][1]).reduce((a, cv) => a + cv);
+    var avg = sum / merged[kv[i][0]].length;
+    var ud = merged[kv[i][0]].map((x) => x / kv[i][1]).map((x) => {
+      if (x >= avg) return x / avg;
+      return x / avg;
+    });
+    var usum = ud.reduce((a, cv) => a + cv);
+    var uavg = usum / ud.length;
+    var uva = ud.map((x) => (x - uavg) * (x - uavg)).reduce((a, cv) => a + cv) /
+        ud.length;
+        
+    const bt_cnt_threshold = 15;
+
+    if (kv[i][1] < bt_cnt_threshold) continue;
+
+    bt.push({
+      id: kv[i][0],
+      ct: kv[i][1],
+      va: uva,
+      st: Math.sqrt(uva),
+    });
+  }
+
+  
+  bt.sort((x, y) => y.st - x.st);
+
+  const dataPath = path.resolve(__dirname, 'smoothly.json');
+  fs.writeFileSync(dataPath, JSON.stringify(bt, null, 4), function(err) {
+    console.log(err);
+  });
+}
+
+// _calculate_smoothly();
+
+function _show_vmpp(id) {
+  var merged = _merge_msperpages_by_articleid();
+
+  var min = 99999999999;
+  var max = 0;
+
+  merged[id].forEach(function(x) {
+    if (x < min) min = x;
+    if (x > max) max = x;
+  });
+
+  var vmpp = Array(((max / 10000) >> 0) + 1).fill(0);
+
+  merged[id].forEach(function(x) {
+    vmpp[(x / 10000) >> 0] += 1;
+  });
+
+  for (var i = 0; i < vmpp.length; i++) {
+    var pp = '';
+    for (var j = 0; j < vmpp[i]; j++)
+      pp += '*';
+    console.log(pp);
+  }
+
+  console.log(vmpp.length);
+}
+
+// _show_burst_time_to_graph(1951387);
+_show_vmpp(1946094);
