@@ -11,7 +11,6 @@
 using System;
 using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -27,73 +26,25 @@ namespace violet_styler
 {
     class Program
     {
-        public static string SerializeObject(object toSerialize)
-        {
-            try
-            {
-                return JsonConvert.SerializeObject(toSerialize, Formatting.Indented, new JsonSerializerSettings
-                {
-                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-                });
-            }
-            catch
-            {
-                try
-                {
-                    XmlSerializer xmlSerializer = new XmlSerializer(toSerialize.GetType());
-
-                    using (StringWriter textWriter = new StringWriter())
-                    {
-                        xmlSerializer.Serialize(textWriter, toSerialize);
-                        return textWriter.ToString();
-                    }
-                }
-                catch
-                {
-                    return toSerialize.ToString();
-                }
-            }
-        }
-
         static void Main(string[] args)
         {
-            using (var conn = new MySqlConnection(args[0]))
-            {
-                conn.Open();
+            Logs.Instance.Push("Start");
 
-                var myCommand = conn.CreateCommand();
-                var transaction = conn.BeginTransaction();
+            var db = new Database(args[0]);
 
-                myCommand.Transaction = transaction;
-                myCommand.Connection = conn;
+            Console.WriteLine(db.Count());
 
-                try
+            var vv = db.LoadData(900000,10000).Where(x => x.IsValid() && x.ValidSeconds > 24).ToList();
+            //Console.WriteLine(Logs.SerializeObject(vv));
+            vv = vv.Where(x => x.MPP.VStd() < 500).ToList();
+            vv.Sort((x,y) => x.MPP.VAvg().CompareTo(y.MPP.VAvg()));
+            vv.ForEach(
+                (x) =>
                 {
-                    myCommand.CommandText = "SELECT * FROM viewreport ORDER BY Id LIMIT 10";
-                    var reader = myCommand.ExecuteReader();
-                    while (reader.Read())
-                    {
-                        var result = new Object[reader.FieldCount];
-                        reader.GetValues(result);
-                        Console.WriteLine(SerializeObject(result));
-                    }
-                    reader.Close();
-                }
-                catch (Exception e)
-                {
-                    try
-                    {
-                        transaction.Rollback();
-                    }
-                    catch (Exception e1)
-                    {
-                    }
-                }
-                finally
-                {
-                    conn.Close();
-                }
-            }
+                    Console.WriteLine($"{x.ArticleId}, {x.ValidSeconds}, {x.MPP.value.Sum()}ms, {x.MPP.VAvg().ToString("#.0")}ms, {x.MPP.VStd().ToString("#.0")}, {x.MPP.VCount()}/{x.Pages}");
+                    //x.MPP.Print();
+                    x.VVMPP(50).Print();
+                });
         }
     }
 }
