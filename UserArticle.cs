@@ -82,7 +82,7 @@ namespace violet_styler
             foreach (var v in value)
             {
                 if (v == 0) { c++; continue; }
-                
+
                 Console.Write($"{(c++ * cutoffMS).ToString("#,0").PadLeft(5)}ms: ");
                 for (var i = 0; i < v; i++)
                 {
@@ -118,7 +118,7 @@ namespace violet_styler
             EndsTime = (source[6] as DateTime?).Value;
             ValidSeconds = (source[7] as int?).Value;
             var mpp = JsonConvert.DeserializeObject<List<int>>((source[8] as string));
-            MPP = new MPP(mpp.Select(x => x * 10).ToList());
+            MPP = new MPP(mpp.Select(x => x * 100).ToList());
             UserAppId = (source[9] as string);
         }
 
@@ -156,5 +156,23 @@ namespace violet_styler
         // Valid Read Time per Page (ms/p)
         public double VRTP() => VRT() / VRP();
 
+        public MPP OrganizedMPP()
+        {
+            var p = 1.96;
+            var avg = MPP.VAvg();
+            var std = MPP.VStd();
+            var zs = avg - p * std;
+            var ze = avg + p * std;
+
+            return new MPP(MPP.value.Where(x => x > zs && x < ze).ToList());
+        }
+
+        public VMPP OrganizedVMPP(int cutoffMS = 500) {
+            var mpp = OrganizedMPP();
+            var max = mpp.Max();
+            var vmpp = new int[max / cutoffMS + 1];
+            mpp.value.Where(x => x != 0).ToList().ForEach(x => vmpp[x / cutoffMS]++);
+            return new VMPP(vmpp.ToList(), cutoffMS);
+        }
     }
 }

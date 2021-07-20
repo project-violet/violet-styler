@@ -34,16 +34,21 @@ namespace violet_styler
 
             Console.WriteLine(db.Count());
 
-            var vv = db.LoadData(900000,10000).Where(x => x.IsValid() && x.ValidSeconds > 24).ToList();
+            var vv = db.LoadData(900000, 10000).Where(x => x.IsValid() && x.ValidSeconds > 24).ToList();
             //Console.WriteLine(Logs.SerializeObject(vv));
-            vv = vv.Where(x => x.MPP.VStd() < 500).ToList();
-            vv.Sort((x,y) => x.MPP.VAvg().CompareTo(y.MPP.VAvg()));
+            vv = vv.Where(x => x.MPP.VStd() < 1000 && x.MPP.VCount() > 1).ToList();
+            vv.Sort((x, y) => x.MPP.VAvg().CompareTo(y.MPP.VAvg()));
             vv.ForEach(
                 (x) =>
                 {
-                    Console.WriteLine($"{x.ArticleId}, {x.ValidSeconds}, {x.MPP.value.Sum()}ms, {x.MPP.VAvg().ToString("#.0")}ms, {x.MPP.VStd().ToString("#.0")}, {x.MPP.VCount()}/{x.Pages}");
+                    Console.WriteLine("----------------------------");
+                    Console.WriteLine($"{x.ArticleId}, {x.ValidSeconds}, {x.MPP.value.Sum()}ms, " +
+                        $"{x.MPP.VAvg().ToString("#.0")}ms, {x.MPP.VStd().ToString("#.0")}, {x.MPP.VCount()}/{x.Pages}");
                     //x.MPP.Print();
                     x.VVMPP(50).Print();
+                    Console.WriteLine($"{x.OrganizedMPP().value.Sum()}ms, {x.OrganizedMPP().VAvg().ToString("#.0")}ms, "+
+                                      $"{x.OrganizedMPP().VStd().ToString("#.0")}, {x.OrganizedMPP().VCount()}/{x.Pages}");
+                    x.OrganizedVMPP(50).Print();
                 });
         }
     }
