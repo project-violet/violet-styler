@@ -47,7 +47,7 @@ namespace violet_styler
                     //x.MPP.Print();
                     x.VVMPP(50).Print();
                     Console.WriteLine($"{x.OrganizedMPP().value.Sum()}ms, {x.OrganizedMPP().VAvg().ToString("#.0")}ms, "+
-                                      $"{x.OrganizedMPP().VStd().ToString("#.0")}, {x.OrganizedMPP().VCount()}/{x.Pages}");
+                                      $"{x.OrganizedMPP().VStd().ToString("#.0")}, {x.OrganizedMPP().VCount()}/{x.Pages}, {x.Score()}");
                     x.OrganizedVMPP(50).Print();
                 });
         }

@@ -158,7 +158,7 @@ namespace violet_styler
 
         public MPP OrganizedMPP()
         {
-            var p = 1.96;
+            var p = 1.96; // 95%
             var avg = MPP.VAvg();
             var std = MPP.VStd();
             var zs = avg - p * std;
@@ -167,12 +167,81 @@ namespace violet_styler
             return new MPP(MPP.value.Where(x => x > zs && x < ze).ToList());
         }
 
-        public VMPP OrganizedVMPP(int cutoffMS = 500) {
+        public VMPP OrganizedVMPP(int cutoffMS = 500)
+        {
             var mpp = OrganizedMPP();
             var max = mpp.Max();
             var vmpp = new int[max / cutoffMS + 1];
             mpp.value.Where(x => x != 0).ToList().ForEach(x => vmpp[x / cutoffMS]++);
             return new VMPP(vmpp.ToList(), cutoffMS);
+        }
+
+        // Reproduced Valid Read Time per Pages
+        public double RVRTP() => OrganizedMPP().VAvg();
+
+        // Normal Distribution Z-Score
+        static double Phi(double x)
+        {
+            // constants
+            double a1 = 0.254829592;
+            double a2 = -0.284496736;
+            double a3 = 1.421413741;
+            double a4 = -1.453152027;
+            double a5 = 1.061405429;
+            double p = 0.3275911;
+
+            // Save the sign of x
+            int sign = 1;
+            if (x < 0)
+                sign = -1;
+            x = Math.Abs(x) / Math.Sqrt(2.0);
+
+            // A&S formula 7.1.26
+            double t = 1.0 / (1.0 + p * x);
+            double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+
+            return 0.5 * (1.0 + sign * y);
+        }
+
+        // VRP with Concentration Weight
+        public double FVRP()
+        {
+            var p = 0.842; // 80%
+            var avg = MPP.VAvg();
+            var std = MPP.VStd();
+            var zs = avg - p * std;
+            var ze = avg + p * std;
+
+            return MPP.value.Where(x => x > 0).Sum(x =>
+            {
+                if (x < zs)
+                {
+                    var v = Phi((x - avg) / std);
+                    return 25 * v * v;
+                }
+                else if (x > ze)
+                {
+                    var v = Phi((x - avg) / std);
+                    return v + 0.2;
+                }
+
+                return 1.0;
+            });
+        }
+
+        // w := [0, 1]
+        private double NoiseFilterModel(double w)
+        {
+            var ww = (w - 0.5) * 5;
+            return 1 / (1 + Math.Exp(-ww));
+        }
+
+        // User Article Score
+        public double Score()
+        {
+            var vavg = MPP.VAvg();
+            var fvrp = FVRP();
+            return NoiseFilterModel(fvrp / Pages) * vavg;
         }
     }
 }
