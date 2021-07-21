@@ -19,7 +19,7 @@ namespace violet_styler
 {
     class MPP
     {
-        public List<int> value { get; private set; }
+        public List<int> value { get; set; }
         public MPP(List<int> mpp) => this.value = mpp;
         public virtual double Avg() => (double)value.Sum() / value.Count;
         public virtual int Min() => value.Min();
@@ -95,17 +95,19 @@ namespace violet_styler
 
     class UserArticle
     {
-        public int Id { get; private set; }
-        public int ArticleId { get; private set; }
-        public int Pages { get; private set; }
-        public int LastPage { get; private set; }
-        public DateTime TimeStamp { get; private set; }
-        public DateTime StartsTime { get; private set; }
-        public DateTime EndsTime { get; private set; }
-        public int ValidSeconds { get; private set; }
+        public int Id { get; set; }
+        public int ArticleId { get; set; }
+        public int Pages { get; set; }
+        public int LastPage { get; set; }
+        public DateTime TimeStamp { get; set; }
+        public DateTime StartsTime { get; set; }
+        public DateTime EndsTime { get; set; }
+        public int ValidSeconds { get; set; }
         // Time to Read Per Page (milli seconds)
-        public MPP MPP { get; private set; }
-        public string UserAppId { get; private set; }
+        public MPP MPP { get; set; }
+        public string UserAppId { get; set; }
+
+        public UserArticle() { }
 
         public UserArticle(Object[] source)
         {
@@ -179,30 +181,6 @@ namespace violet_styler
         // Reproduced Valid Read Time per Pages
         public double RVRTP() => OrganizedMPP().VAvg();
 
-        // Normal Distribution Z-Score
-        static double Phi(double x)
-        {
-            // constants
-            double a1 = 0.254829592;
-            double a2 = -0.284496736;
-            double a3 = 1.421413741;
-            double a4 = -1.453152027;
-            double a5 = 1.061405429;
-            double p = 0.3275911;
-
-            // Save the sign of x
-            int sign = 1;
-            if (x < 0)
-                sign = -1;
-            x = Math.Abs(x) / Math.Sqrt(2.0);
-
-            // A&S formula 7.1.26
-            double t = 1.0 / (1.0 + p * x);
-            double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
-
-            return 0.5 * (1.0 + sign * y);
-        }
-
         // VRP with Concentration Weight
         public double FVRP()
         {
@@ -216,12 +194,12 @@ namespace violet_styler
             {
                 if (x < zs)
                 {
-                    var v = Phi((x - avg) / std);
+                    var v = NormalDist.Phi((x - avg) / std);
                     return 25 * v * v;
                 }
                 else if (x > ze)
                 {
-                    var v = Phi((x - avg) / std);
+                    var v = NormalDist.Phi((x - avg) / std);
                     return v + 0.2;
                 }
 
@@ -232,16 +210,18 @@ namespace violet_styler
         // w := [0, 1]
         private double NoiseFilterModel(double w)
         {
-            var ww = (w - 0.5) * 5;
+            var ww = (w - 0.2) * 5;
             return 1 / (1 + Math.Exp(-ww));
         }
 
         // User Article Score
+        double scoreCache = 0;
         public double Score()
         {
+            if (scoreCache != 0) return scoreCache;
             var vavg = MPP.VAvg();
             var fvrp = FVRP();
-            return NoiseFilterModel(fvrp / Pages) * vavg;
+            return scoreCache = NoiseFilterModel(fvrp / Pages) * vavg;
         }
     }
 }
