@@ -43,9 +43,12 @@ namespace violet_styler
             return 0.5 * (1.0 + sign * y);
         }
 
-        List<double> scoreMap = new List<double>();
-        public NormalDist() {
-            
+
+        public static double Std(List<double> ld)
+        {
+            var avg = ld.Average();
+            return Math.Sqrt(ld.Select(x => x - avg).Sum(x => x * x) / ld.Count);
         }
+
     }
 }

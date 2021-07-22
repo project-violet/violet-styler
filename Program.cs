@@ -67,24 +67,94 @@ namespace violet_styler
             });
 
             // Console.WriteLine(userDict.Count);
-            var ll = userDict.ToList();
-            ll.ForEach(x => x.Value.Merge());
-            ll.ForEach(x => x.Value.Organize());
-            ll.Sort((x, y) => x.Value.UserArticles.Count.CompareTo(y.Value.UserArticles.Count));
+            var users = userDict.Select(x => x.Value).ToList();
+            users.ForEach(x => x.Merge());
+            users.ForEach(x => x.Organize());
+            users.Sort((x, y) => x.UserArticles.Count.CompareTo(y.UserArticles.Count));
             var udi = User.UDI(userDict.Select(x => x.Value).ToList());
-            foreach (var kv in ll)
+            // foreach (var kv in ll)
+            // {
+            //     if (kv.Value.UserArticles.Count == 0) continue;
+            //     Console.WriteLine(kv.Value.ToString());
+            //     Console.WriteLine(udi[kv.Value.UserAppId]);
+            //     //kv.Value.Print();
+            //     //Console.WriteLine(Logs.SerializeObject(kv.Value.Concentration()));
+            // }
+
+            var articles = new Dictionary<int, Article>();
+            var ldiSource = new Dictionary<int, List<double>>();
+
+            users.ForEach(x => x.Concentration().ToList().ForEach(y =>
             {
-                if (kv.Value.UserArticles.Count == 0) continue;
-                Console.WriteLine(kv.Value.ToString());
-                Console.WriteLine(udi[kv.Value.UserAppId]);
-                //kv.Value.Print();
-                //Console.WriteLine(Logs.SerializeObject(kv.Value.Concentration()));
-            }
+                if (!articles.ContainsKey(y.Key))
+                    articles.Add(y.Key, new Article(y.Key));
+
+                if (!ldiSource.ContainsKey(y.Key))
+                    ldiSource.Add(y.Key, new List<double>());
+
+                ldiSource[y.Key].Add(y.Value);
+
+                x.Concentration().ToList().ForEach(z =>
+                {
+                    if (y.Key == z.Key) return;
+                    if (!articles.ContainsKey(z.Key))
+                        articles.Add(z.Key, new Article(z.Key));
+
+                    // y ---  user --- z
+                    //  ytoz      ztoy
+
+                    articles[y.Key].PushAssocication(x.UserAppId, z.Key, y.Value, z.Value, udi[x.UserAppId]);
+                });
+            }));
+
+            //
+            // Calculation LDI
+            //
+
+            var ldiPreStd = ldiSource.Select(x => new Tuple<int, double>(x.Key, NormalDist.Std(x.Value))).ToList();
+            Console.WriteLine(Logs.SerializeObject(ldiPreStd.Select(x => x.Item2)));
+
+            var ldiAvg = ldiPreStd.Select(x => x.Item2).Average();
+            var ldiStd = NormalDist.Std(ldiPreStd.Select(x => x.Item2).ToList());
+
+            var ldi = new Dictionary<int, double>();
+
+            Console.WriteLine($"{ldiPreStd.Select(x => x.Item2).Max()}");
+            Console.WriteLine($"{ldiAvg}, {ldiStd}");
+
+            ldiPreStd.ForEach(x =>
+            {
+                var percent = NormalDist.Phi((x.Item2 - ldiAvg) / ldiStd);
+                ldi.Add(x.Item1, percent * 5);
+            });
+
+            var ldiLL = ldi.ToList();
+            ldiLL.Sort((x, y) => x.Value.CompareTo(y.Value));
+            Console.WriteLine(Logs.SerializeObject(new Dictionary<int, double>(ldiLL)));
+
+            //
+            // Print Relative Article
+            //
+
+            var articlesList = articles.ToList().Where(x => x.Key == 1958973).ToList();
+            articlesList.Sort((x, y) => x.Value.Association.Count.CompareTo(y.Value.Association.Count));
+
+            //Console.WriteLine(Logs.SerializeObject(articlesList.Last().Value.Association));
+            //Console.WriteLine(articlesList.Last().Value.Association.Count);
+
+            var e = articlesList.Last().Value.Evaluate(ldi).ToList();
+            e.Sort((x, y) => x.Value.CompareTo(y.Value));
+
+            Console.WriteLine(Logs.SerializeObject(new Dictionary<int, double>(e)));
+            Console.WriteLine(articlesList.Last().Value.ArticleId);
+
+            //articlesList.ForEach(x => Console.WriteLine(x.Value.Association.Count));
 
             return;
 
             //////////////////////////////////////////////////////////////
 
+            /*
             //var vv = db.LoadData(900000, 10000).Where(x => x.IsValid() && x.ValidSeconds > 24).ToList();
             //Console.WriteLine(Logs.SerializeObject(vv));
             vv = vv.Where(x => x.MPP.VStd() < 2000 && x.MPP.VCount() > 1).ToList();
@@ -102,6 +172,7 @@ namespace violet_styler
                                       $"{x.OrganizedMPP().VStd().ToString("#.0")}, {x.OrganizedMPP().VCount()}/{x.Pages}, {x.Score()}");
                     //x.OrganizedVMPP(50).Print();
                 });
+            */
         }
     }
 }

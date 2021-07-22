@@ -86,6 +86,7 @@ namespace violet_styler
             UserArticles = dict.ToList().Select(x => x.Value).ToList();
         }
 
+        // Article Conecntration Rate
         public Dictionary<int, double> Concentration()
         {
             var dict = new Dictionary<int, double>();
@@ -117,9 +118,6 @@ namespace violet_styler
 
             var avg = users.Sum(x => x.Std()) / users.Count;
             var std = Math.Sqrt(users.Select(x => (x.Std() - avg) * (x.Std() - avg)).Sum() / users.Count);
-
-            Console.WriteLine(avg);
-            Console.WriteLine(std);
 
             users.ForEach(x => {
                 var percent = NormalDist.Phi((x.Std() - avg) / std);
