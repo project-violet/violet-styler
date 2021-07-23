@@ -228,7 +228,8 @@ namespace violet_styler
                 x.Concentration().ToList().ForEach(y =>
                 {
                     if (!ldiSource.ContainsKey(y.Key))
-                        ldiSource[y.Key].Add(y.Value);
+                        ldiSource.Add(y.Key, new List<double>());
+                    ldiSource[y.Key].Add(y.Value);
                 })
             );
 

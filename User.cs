@@ -104,7 +104,8 @@ namespace violet_styler
             var avg = Avg();
             var std = Std();
 
-            UserArticles.ForEach(x => {
+            UserArticles.ForEach(x =>
+            {
                 var percent = NormalDist.Phi((x.Score() - avg) / std);
                 dict.Add(x.ArticleId, percent * 5);
             });
@@ -113,17 +114,21 @@ namespace violet_styler
         }
 
         // User Confidence Level
-        public static Dictionary<string, double> UDI(List<User> users) {
+        public static Dictionary<string, double> UDI(List<User> users)
+        {
             var dict = new Dictionary<string, double>();
 
             users = users.Where(x => !double.IsNaN(x.Std())).ToList();
 
-            var avg = users.Sum(x => x.Std()) / users.Count;
-            var std = Math.Sqrt(users.Select(x => (x.Std() - avg) * (x.Std() - avg)).Sum() / users.Count);
+            var avgs = users.Select(x => new Tuple<string, double>(x.UserAppId, x.Std())).ToList();
 
-            users.ForEach(x => {
-                var percent = NormalDist.Phi((x.Std() - avg) / std);
-                dict.Add(x.UserAppId, percent * 5);
+            var avg = avgs.Average(x => x.Item2);
+            var std = NormalDist.Std(avgs.Select(x => x.Item2).ToList());
+
+            avgs.ForEach(x =>
+            {
+                var percent = NormalDist.Phi((x.Item2 - avg) / std);
+                dict.Add(x.Item1, percent * 5);
             });
 
             return dict;
