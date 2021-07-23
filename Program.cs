@@ -24,6 +24,259 @@ using System.Text;
 
 namespace violet_styler
 {
+
+    public class Options : IConsoleOption
+    {
+        [CommandLine("--help", CommandType.OPTION)]
+        public bool Help;
+        [CommandLine("--version", CommandType.OPTION, ShortOption = "-v", Info = "Show version information.")]
+        public bool Version;
+
+        [CommandLine("--syncronize-chunk", CommandType.OPTION, ShortOption = "-s", Info = "Syncronize chunk datas")]
+        public bool SyncronizeChunk;
+        [CommandLine("--export-rel-list", CommandType.OPTION, ShortOption = "-e", Info = "Export relative list")]
+        public bool ExportRelativeList;
+    }
+
+
+    public class Command
+    {
+        public static void Start(string[] arguments)
+        {
+            arguments = CommandLineUtil.SplitCombinedOptions(arguments);
+            var option = CommandLineParser.Parse<Options>(arguments);
+
+            //
+            //  Single Commands
+            //
+            if (option.Help)
+            {
+                PrintHelp();
+            }
+            else if (option.Version)
+            {
+                // PrintVersion();
+            }
+            else if (option.SyncronizeChunk)
+            {
+                ProcessSyncronizeChunk();
+            }
+            else if (option.ExportRelativeList)
+            {
+                ProcessExportRelativeList();
+            }
+            else if (option.Error)
+            {
+                Console.WriteLine(option.ErrorMessage);
+                if (option.HelpMessage != null)
+                    Console.WriteLine(option.HelpMessage);
+                return;
+            }
+            else
+            {
+                Console.WriteLine("Nothing to work on.");
+                Console.WriteLine("Enter './violet-styler --help' to get more information");
+            }
+
+            return;
+        }
+
+        static void PrintHelp()
+        {
+            // PrintVersion();
+            Console.WriteLine($"Copyright (C) 2021. project violet-styler.");
+            Console.WriteLine("Usage: ./violet-styler [OPTIONS...]");
+
+            var builder = new StringBuilder();
+            CommandLineParser.GetFields(typeof(Options)).ToList().ForEach(
+                x =>
+                {
+                    var key = x.Key;
+                    if (!key.StartsWith("--"))
+                        return;
+                    if (!string.IsNullOrEmpty(x.Value.Item2.ShortOption))
+                        key = $"{x.Value.Item2.ShortOption}, " + key;
+                    var help = "";
+                    if (!string.IsNullOrEmpty(x.Value.Item2.Help))
+                        help = $"[{x.Value.Item2.Help}]";
+                    if (!string.IsNullOrEmpty(x.Value.Item2.Info))
+                        builder.Append($"   {key}".PadRight(30) + $" {x.Value.Item2.Info} {help}\r\n");
+                    else
+                        builder.Append($"   {key}".PadRight(30) + $" {help}\r\n");
+                });
+            Console.Write(builder.ToString());
+        }
+
+        // public static void PrintVersion()
+        // {
+        //     Console.WriteLine($"{Version.Name} {Version.Text}");
+        //     Console.WriteLine($"Build Date: " + Internals.GetBuildDate().ToLongDateString());
+        // }
+
+        static void ProcessSyncronizeChunk()
+        {
+            var db = new Database(File.ReadAllText("connection-string.txt").Trim());
+
+            Console.WriteLine(db.Count());
+
+            var cnt = db.Count();
+
+            for (var i = 0; i <= 10; i++)
+            {
+                var data = db.LoadData(i * cnt / 10, Math.Min(cnt / 10, cnt - i * cnt / 10 - 1));
+                Console.WriteLine($"Load Data ... [{i * cnt / 10}/{Math.Min(cnt / 10, cnt - i * cnt / 10 - 1)}]");
+                File.WriteAllText($"chunk-{i}.json", JsonConvert.SerializeObject(data));
+            }
+        }
+
+        static List<UserArticle> loadChunks()
+        {
+            var vv = new List<UserArticle>();
+
+            for (var i = 0; i < 10; i++)
+            {
+                Console.WriteLine($"Load Data ... [chunk-{i}.json]");
+                vv.AddRange(JsonConvert.DeserializeObject<List<UserArticle>>(File.ReadAllText($"chunk-{i}.json")));
+            }
+
+            return vv;
+        }
+
+        static Dictionary<string, User> buildUser(List<UserArticle> userArticles)
+        {
+            var userDict = new Dictionary<string, User>();
+
+            Console.Write($"Build User ... ");
+            userArticles.ForEach(x =>
+            {
+                if (!x.IsValid() || x.ValidSeconds < 4 || x.MPP.VCount() < 2) return;
+                if (!userDict.ContainsKey(x.UserAppId))
+                    userDict.Add(x.UserAppId, new User(x.UserAppId));
+                userDict[x.UserAppId].UserArticles.Add(x);
+            });
+            Console.WriteLine("Complete");
+
+            return userDict;
+        }
+
+        static List<User> organizeUser(Dictionary<string, User> userDict)
+        {
+            Console.Write($"Organize User ... ");
+            var users = userDict.Select(x => x.Value).ToList();
+
+            using (var pb = new ExtractingProgressBar())
+            {
+                var count = 0;
+                users.ForEach(x =>
+                {
+                    pb.Report(users.Count, count++);
+                    x.Merge();
+                    x.Organize();
+                });
+            }
+            Console.WriteLine("Complete");
+            return users;
+        }
+
+        static Dictionary<string, double> buildUDI(Dictionary<string, User> userDict)
+        {
+            Console.Write($"Build User Confidence Level (UDI) ... ");
+            var udi = User.UDI(userDict.Select(x => x.Value).ToList());
+            Console.WriteLine("Complete");
+            return udi;
+        }
+
+        static Dictionary<int, Article> buildArticles(List<User> users, Dictionary<string, double> udi)
+        {
+            var articles = new Dictionary<int, Article>();
+            Console.Write($"Build Article Concentration ... ");
+            using (var pb = new ExtractingProgressBar())
+            {
+                var count = 0;
+                users.ForEach(x =>
+                {
+                    x.Concentration().ToList().ForEach(y =>
+                    {
+                        if (!articles.ContainsKey(y.Key))
+                            articles.Add(y.Key, new Article(y.Key));
+
+                        x.Concentration().ToList().ForEach(z =>
+                        {
+                            if (y.Key == z.Key) return;
+                            if (!articles.ContainsKey(z.Key))
+                                articles.Add(z.Key, new Article(z.Key));
+
+                            // y ---  user --- z
+                            //  ytoz      ztoy
+
+                            articles[y.Key].PushAssocication(x.UserAppId, z.Key, y.Value, z.Value, udi[x.UserAppId]);
+                        });
+                    });
+                    pb.Report(users.Count, count++);
+                });
+            }
+            Console.WriteLine("Complete");
+            return articles;
+        }
+
+        static Dictionary<int, double> buildLDI(List<User> users)
+        {
+            Console.Write($"Build Likes and Dislikes Index (LDI) ... ");
+            var ldiSource = new Dictionary<int, List<double>>();
+
+            users.ForEach(x =>
+                x.Concentration().ToList().ForEach(y =>
+                {
+                    if (!ldiSource.ContainsKey(y.Key))
+                        ldiSource[y.Key].Add(y.Value);
+                })
+            );
+
+            var ldiPreStd = ldiSource.Select(x => new Tuple<int, double>(x.Key, NormalDist.Std(x.Value))).ToList();
+
+            var ldiAvg = ldiPreStd.Select(x => x.Item2).Average();
+            var ldiStd = NormalDist.Std(ldiPreStd.Select(x => x.Item2).ToList());
+
+            var ldi = new Dictionary<int, double>();
+
+            ldiPreStd.ForEach(x =>
+            {
+                var percent = NormalDist.Phi((x.Item2 - ldiAvg) / ldiStd);
+                ldi.Add(x.Item1, percent * 5);
+            });
+            Console.WriteLine("Complete");
+
+            return ldi;
+        }
+
+        static void ProcessExportRelativeList()
+        {
+            var chunks = loadChunks();
+            var userDict = buildUser(chunks);
+            var users = organizeUser(userDict);
+            var udi = buildUDI(userDict);
+            var articles = buildArticles(users, udi);
+            var ldi = buildLDI(users);
+
+            Console.Write($"Build Article Assocications ... ");
+            var articlesList = articles.ToList();
+            articlesList.Sort((x, y) => x.Value.Association.Count.CompareTo(y.Value.Association.Count));
+
+            var articleRelList = articlesList.Select(x =>
+            {
+                var e = x.Value.Evaluate(ldi).ToList();
+                e.Sort((x, y) => y.Value.CompareTo(x.Value));
+                return new Tuple<int, List<KeyValuePair<int, double>>>(x.Key, e);
+            }).Where(x => x.Item2.Count > 20).Select(x =>
+                new KeyValuePair<int, List<int>>(x.Item1, x.Item2.Select(x => x.Key).Take(100).ToList()));
+            Console.WriteLine("Complete");
+
+            Console.Write($"Writing Article Relation List ... ");
+            File.WriteAllText("article-rel-list.json", JsonConvert.SerializeObject(new Dictionary<int, List<int>>(articleRelList)));
+            Console.WriteLine("Complete");
+        }
+    }
+
     class Program
     {
         static void savedb(string connstr)
@@ -42,9 +295,66 @@ namespace violet_styler
             }
         }
 
+        public static string DatabaseConnectionString;
+
         static void Main(string[] args)
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            Logs.Instance.AddLogNotify((s, e) =>
+            {
+                var tuple = s as Tuple<DateTime, string, bool>;
+                CultureInfo en = new CultureInfo("en-US");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("info: ");
+                Console.ResetColor();
+                Console.WriteLine($"[{tuple.Item1.ToString(en)}] {tuple.Item2}");
+            });
+
+            Logs.Instance.AddLogErrorNotify((s, e) =>
+            {
+                var tuple = s as Tuple<DateTime, string, bool>;
+                CultureInfo en = new CultureInfo("en-US");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.Write("error: ");
+                Console.ResetColor();
+                Console.Error.WriteLine($"[{tuple.Item1.ToString(en)}] {tuple.Item2}");
+            });
+
+            Logs.Instance.AddLogWarningNotify((s, e) =>
+            {
+                var tuple = s as Tuple<DateTime, string, bool>;
+                CultureInfo en = new CultureInfo("en-US");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Error.Write("warning: ");
+                Console.ResetColor();
+                Console.Error.WriteLine($"[{tuple.Item1.ToString(en)}] {tuple.Item2}");
+            });
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                Logs.Instance.PushError("unhandled: " + (e.ExceptionObject as Exception).ToString());
+            };
+
+
+            try
+            {
+                Command.Start(args);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("An error occured! " + e.Message);
+                Console.WriteLine(e.StackTrace);
+                Console.WriteLine("Please, check log.txt file.");
+            }
+
+            Environment.Exit(0);
+
+            return;
+
             Logs.Instance.Push("Start");
+
+            DatabaseConnectionString = args[0];
 
             //savedb(args[0]);
 
