@@ -61,7 +61,7 @@ namespace violet_styler
                 // var xx = Math.Sqrt(x.Value.Sum(x => x.Item1 * x.Item1));
                 // var yy = Math.Sqrt(x.Value.Sum(y => y.Item2 * y.Item2));
                 // var zz = x.Value.Select(x => x.Item1 * x.Item2).Sum();
-                var pureScore = Math.Sqrt(x.Value.Select(x => x.Item1 * x.Item2).Sum()) / x.Value.Count;
+                var pureScore = x.Value.Select(x => Math.Sqrt(x.Item1 * x.Item2)).Sum() / x.Value.Count;
 
                 calVec.Add(x.Key, pureScore * 0.5 + ldi[x.Key] * 0.3 + (x.Value.Count - cAvg) / cStd * 5 * 0.2);
                 // calVec.Add(x.Key, Math.Sqrt(x.Value.Select(x => x.Item1 * x.Item2));

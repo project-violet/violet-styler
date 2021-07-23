@@ -48,6 +48,10 @@ namespace violet_styler
 
             //savedb(args[0]);
 
+            //
+            //  Load User Articles
+            //
+
             var vv = new List<UserArticle>();
 
             for (var i = 0; i < 10; i++)
@@ -56,11 +60,15 @@ namespace violet_styler
                 vv.AddRange(JsonConvert.DeserializeObject<List<UserArticle>>(File.ReadAllText($"chunk-{i}.json")));
             }
 
+            //
+            //  Build User
+            //
+
             var userDict = new Dictionary<string, User>();
 
             vv.ForEach(x =>
             {
-                if (!x.IsValid() || x.ValidSeconds < 24 || x.MPP.VCount() < 2) return;
+                if (!x.IsValid() || x.ValidSeconds < 4 || x.MPP.VCount() < 2) return;
                 if (!userDict.ContainsKey(x.UserAppId))
                     userDict.Add(x.UserAppId, new User(x.UserAppId));
                 userDict[x.UserAppId].UserArticles.Add(x);
@@ -112,7 +120,7 @@ namespace violet_styler
             //
 
             var ldiPreStd = ldiSource.Select(x => new Tuple<int, double>(x.Key, NormalDist.Std(x.Value))).ToList();
-            Console.WriteLine(Logs.SerializeObject(ldiPreStd.Select(x => x.Item2)));
+            //Console.WriteLine(Logs.SerializeObject(ldiPreStd.Select(x => x.Item2)));
 
             var ldiAvg = ldiPreStd.Select(x => x.Item2).Average();
             var ldiStd = NormalDist.Std(ldiPreStd.Select(x => x.Item2).ToList());
@@ -130,25 +138,53 @@ namespace violet_styler
 
             var ldiLL = ldi.ToList();
             ldiLL.Sort((x, y) => x.Value.CompareTo(y.Value));
-            Console.WriteLine(Logs.SerializeObject(new Dictionary<int, double>(ldiLL)));
+            //Console.WriteLine(Logs.SerializeObject(new Dictionary<int, Tuple<double, int>>(
+            //    ldiLL.Where(x=>ldiSource[x.Key].Count > 50).Select(x => new KeyValuePair<int, Tuple<double, int>>(x.Key, new Tuple<double, int>(x.Value, ldiSource[x.Key].Count))))));
+
+            //Console.WriteLine(Logs.SerializeObject(ldiSource[1954415]));
 
             //
             // Print Relative Article
             //
 
-            var articlesList = articles.ToList().Where(x => x.Key == 1958973).ToList();
+            // while (true)
+            // {
+            //     try
+            //     {
+            //         var article = int.Parse(Console.ReadLine().Trim());
+
+            //         var articlesList = articles.ToList().Where(x => x.Key == article).ToList();
+            //         articlesList.Sort((x, y) => x.Value.Association.Count.CompareTo(y.Value.Association.Count));
+
+            //         //Console.WriteLine(Logs.SerializeObject(articlesList.Last().Value.Association));
+            //         //Console.WriteLine(articlesList.Last().Value.Association.Count);
+
+            //         var e = articlesList.Last().Value.Evaluate(ldi).ToList();
+            //         e.Sort((x, y) => x.Value.CompareTo(y.Value));
+
+            //         Console.WriteLine(Logs.SerializeObject(new Dictionary<int, double>(e)));
+            //         Console.WriteLine(articlesList.Last().Value.ArticleId);
+
+            //         //articlesList.ForEach(x => Console.WriteLine(x.Value.Association.Count));
+            //     }
+            //     catch (Exception e)
+            //     {
+            //         Console.WriteLine(e.ToString());
+            //     }
+            // }
+
+            var articlesList = articles.ToList();
             articlesList.Sort((x, y) => x.Value.Association.Count.CompareTo(y.Value.Association.Count));
 
-            //Console.WriteLine(Logs.SerializeObject(articlesList.Last().Value.Association));
-            //Console.WriteLine(articlesList.Last().Value.Association.Count);
+            var articleRelList = articlesList.Select(x =>
+            {
+                var e = x.Value.Evaluate(ldi).ToList();
+                e.Sort((x, y) => y.Value.CompareTo(x.Value));
+                return new Tuple<int, List<KeyValuePair<int, double>>>(x.Key, e);
+            }).Where(x => x.Item2.Count > 20).Select(x =>
+                new KeyValuePair<int, List<int>>(x.Item1, x.Item2.Select(x => x.Key).Take(100).ToList()));
 
-            var e = articlesList.Last().Value.Evaluate(ldi).ToList();
-            e.Sort((x, y) => x.Value.CompareTo(y.Value));
-
-            Console.WriteLine(Logs.SerializeObject(new Dictionary<int, double>(e)));
-            Console.WriteLine(articlesList.Last().Value.ArticleId);
-
-            //articlesList.ForEach(x => Console.WriteLine(x.Value.Association.Count));
+            File.WriteAllText("article-rel-list.json", JsonConvert.SerializeObject(new Dictionary<int, List<int>>(articleRelList)));
 
             return;
 

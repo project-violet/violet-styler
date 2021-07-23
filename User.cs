@@ -58,11 +58,10 @@ namespace violet_styler
 
         public void Organize()
         {
-            var p = 1.96; // 95%
             var avg = Avg();
             var std = Std();
-            var zs = avg - p * std;
-            var ze = avg + p * std;
+            var zs = avg - 1.96 * std; // 95%
+            var ze = avg + 2.56 * std; // 99%
 
             UserArticles = UserArticles.Where(x => x.Score() > zs && x.Score() < ze).ToList();
         }
@@ -87,8 +86,11 @@ namespace violet_styler
         }
 
         // Article Conecntration Rate
+        private Dictionary<int, double> concentrationCache = null;
         public Dictionary<int, double> Concentration()
         {
+            if (concentrationCache != null) return concentrationCache;
+
             var dict = new Dictionary<int, double>();
 
             //  0 ~  20%: 0~1
@@ -107,7 +109,7 @@ namespace violet_styler
                 dict.Add(x.ArticleId, percent * 5);
             });
 
-            return dict;
+            return concentrationCache = dict;
         }
 
         // User Confidence Level
