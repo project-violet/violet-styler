@@ -1,0 +1,13 @@
+{
+    "db": {
+      "host": "violet.cpietaewvaxr.ap-northeast-2.rds.amazonaws.com",
+      "port": "3306",
+      "user": "admin",
+      "password": "sAlZyyMiyykQLxCngkvQ",
+      "database": "violet"
+    },
+    "redis": {
+      "host": "violet-rt-ranking.6ukctq.0001.apn2.cache.amazonaws.com",
+      "port": "6379"
+    }
+  }
