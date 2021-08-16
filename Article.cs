@@ -25,6 +25,10 @@ namespace violet_styler
         public List<Tuple<string, int, double, double, double>> Association =
                 new List<Tuple<string, int, double, double, double>>();
 
+        // Article Id, Is Positive
+        public List<Tuple<int, bool>> SimpleAssociation =
+                new List<Tuple<int, bool>>();
+
         public Article(int articleId)
         {
             this.ArticleId = articleId;
@@ -36,6 +40,11 @@ namespace violet_styler
             Association.Add(
                     new Tuple<string, int, double, double, double>
                         (userName, articleId, crto, crfrom, udi));
+        }
+
+        public void PushSimpleAssocication(int articleId, bool isPositive)
+        {
+            SimpleAssociation.Add(new Tuple<int, bool>(articleId, isPositive));
         }
 
         // Article Id, Conecntration
@@ -68,6 +77,29 @@ namespace violet_styler
             });
 
             return calVec;
+        }
+
+        public Dictionary<int, double> EvaluateSimple()
+        {
+            var result = new Dictionary<int, double>();
+
+            SimpleAssociation.ForEach(x =>
+            {
+                if (!result.ContainsKey(x.Item1))
+                    result.Add(x.Item1, 0);
+                if (x.Item2 == false)
+                {
+                    // Positive
+                    result[x.Item1] += 1.0;
+                }
+                else
+                {
+                    // Negative
+                    result[x.Item1] -= 1.0;
+                }
+            });
+
+            return result;
         }
     }
 }

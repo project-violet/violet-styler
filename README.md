@@ -1113,3 +1113,7 @@ Score := nfm(vavg(mpp) / pages) * fvrp
 ### Likes and Dislikes Index (LDI)
 
 ### Article Relevance Tree
+
+### Artpp
+
+![](figure/artpp-std-1.png)

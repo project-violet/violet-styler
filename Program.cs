@@ -36,6 +36,12 @@ namespace violet_styler
         public bool SyncronizeChunk;
         [CommandLine("--export-rel-list", CommandType.OPTION, ShortOption = "-e", Info = "Export relative list")]
         public bool ExportRelativeList;
+        [CommandLine("--export-simprel-list", CommandType.OPTION, ShortOption = "-m", Info = "Export simple relative list")]
+        public bool ExportSimpleRelativeList;
+
+        [CommandLine("--test", CommandType.ARGUMENTS, ArgumentsCount = 1, Info = "Test")]
+        public string[] Test;
+
     }
 
 
@@ -64,6 +70,14 @@ namespace violet_styler
             else if (option.ExportRelativeList)
             {
                 ProcessExportRelativeList();
+            }
+            else if (option.ExportSimpleRelativeList)
+            {
+                ProcessExportSimpleRelativeList();
+            }
+            else if (option.Test != null)
+            {
+                ProcessTest(option.Test);
             }
             else if (option.Error)
             {
@@ -157,6 +171,23 @@ namespace violet_styler
             Console.WriteLine("Complete");
 
             return userDict;
+        }
+
+        static List<User> buildSimpleUser(List<UserArticle> userArticles)
+        {
+            var userDict = new Dictionary<string, User>();
+
+            Console.Write($"Build Simple User ... ");
+            userArticles.ForEach(x =>
+            {
+                if (!x.IsValid() || x.ValidSeconds < 2) return;
+                if (!userDict.ContainsKey(x.UserAppId))
+                    userDict.Add(x.UserAppId, new User(x.UserAppId));
+                userDict[x.UserAppId].UserArticles.Add(x);
+            });
+            Console.WriteLine("Complete");
+
+            return userDict.Select(x => x.Value).ToList();
         }
 
         static List<User> organizeUser(Dictionary<string, User> userDict)
@@ -274,6 +305,90 @@ namespace violet_styler
 
             Console.Write($"Writing Article Relation List ... ");
             File.WriteAllText("article-rel-list.json", JsonConvert.SerializeObject(new Dictionary<int, List<int>>(articleRelList)));
+            Console.WriteLine("Complete");
+        }
+
+        static void ProcessExportSimpleRelativeList()
+        {
+            var chunks = loadChunks();
+            var users = buildSimpleUser(chunks);
+
+            const int negativeThreshold = 24;
+
+            var articles = new Dictionary<int, Article>();
+            Console.Write($"Build Article Relationship ... ");
+            using (var pb = new ExtractingProgressBar())
+            {
+                var count = 0;
+
+                users.ForEach(x =>
+                {
+                    x.UserArticles.ForEach(y =>
+                    {
+                        if (!articles.ContainsKey(y.ArticleId))
+                            articles.Add(y.ArticleId, new Article(y.ArticleId));
+
+                        x.UserArticles.ForEach(z =>
+                        {
+                            if (!articles.ContainsKey(z.ArticleId))
+                                articles.Add(z.ArticleId, new Article(z.ArticleId));
+
+                            var yn = y.ValidSeconds < negativeThreshold;
+                            var zn = z.ValidSeconds < negativeThreshold;
+
+                            if (yn && zn) return;
+
+                            if (!yn)
+                                articles[y.ArticleId].PushSimpleAssocication(z.ArticleId, !zn);
+                            if (!zn)
+                                articles[y.ArticleId].PushSimpleAssocication(z.ArticleId, !yn);
+                        });
+                    });
+
+                    pb.Report(users.Count, count++);
+                });
+            }
+            Console.WriteLine("Complete");
+
+            var results = articles.ToList().Select(x =>
+                new KeyValuePair<int, Dictionary<int, double>>(x.Key, x.Value.EvaluateSimple()));
+
+            Console.Write($"Writing Simple Article Relation List ... ");
+            File.WriteAllText("article-simprel-list.json", JsonConvert.SerializeObject(new Dictionary<int, Dictionary<int, double>>(results)));
+            Console.WriteLine("Complete");
+        }
+
+        static void ProcessTest(string[] args)
+        {
+            var chunks = loadChunks();
+
+            // Read Time Per Page
+            // (articleId, readTime)
+            var rtpp = new Dictionary<int, List<double>>();
+
+            chunks.ForEach(x =>
+            {
+                if (!rtpp.ContainsKey(x.ArticleId))
+                    rtpp.Add(x.ArticleId, new List<double>());
+
+                rtpp[x.ArticleId].Add(x.ValidSeconds / (double)x.Pages);
+            });
+
+            var ll = rtpp.ToList();
+
+            ll.Sort((x, y) => x.Value.Count.CompareTo(y.Value.Count));
+
+            // Average Read Time per Page
+            var artpp = new List<List<double>>();
+
+            ll.ForEach(x =>
+            {
+                var avg = x.Value.Average();
+                var std = Math.Sqrt(x.Value.Sum(x => (x - avg) * (x - avg)));
+                artpp.Add(new List<double> { x.Value.Count, std });
+            });
+
+            File.WriteAllText("artpp.json", JsonConvert.SerializeObject(artpp));
             Console.WriteLine("Complete");
         }
     }
