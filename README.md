@@ -1123,3 +1123,7 @@ Score := nfm(vavg(mpp) / pages) * fvrp
 #### Plot (Read Count, RTPP-Std)
 
 ![](figure/artpp-std-1.png)
+
+#### Plot (Read Count, RTPP-Std divide by Sqrt(Read Count))
+
+![](figure/artpp-std-2.png)

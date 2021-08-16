@@ -384,8 +384,8 @@ namespace violet_styler
             ll.ForEach(x =>
             {
                 var avg = x.Value.Average();
-                // var std = Math.Sqrt(x.Value.Sum(x => (x - avg) * (x - avg)));
-                artpp.Add(new List<double> { x.Value.Count, avg });
+                var std = Math.Sqrt(x.Value.Sum(x => (x - avg) * (x - avg)) /  x.Value.Count);
+                artpp.Add(new List<double> { x.Value.Count, std });
             });
 
             File.WriteAllText("artpp.json", JsonConvert.SerializeObject(artpp));

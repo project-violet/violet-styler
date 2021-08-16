@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-with open('artpp2.json') as json_file:
+with open('artpp.json') as json_file:
     json_data = json.load(json_file)
 
     x = []
