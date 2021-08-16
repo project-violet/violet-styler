@@ -1114,6 +1114,12 @@ Score := nfm(vavg(mpp) / pages) * fvrp
 
 ### Article Relevance Tree
 
-### Artpp
+### Article Read Time per Page (ARTPP)
+
+#### Plot (Read Count, RTPP)
+
+![](figure/artpp-rtpp-1.png)
+
+#### Plot (Read Count, RTPP-Std)
 
 ![](figure/artpp-std-1.png)
